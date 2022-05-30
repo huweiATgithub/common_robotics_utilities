@@ -9,7 +9,6 @@
 #include <vector>
 
 #include <Eigen/Geometry>
-#include <common_robotics_utilities/maybe.hpp>
 #include <common_robotics_utilities/serialization.hpp>
 #include <common_robotics_utilities/utility.hpp>
 
@@ -452,6 +451,9 @@ public:
   }
 };
 
+enum class AccessStatus
+    : uint8_t {SUCCESS, OUT_OF_BOUNDS, MUTABLE_ACCESS_PROHIBITED, UNKNOWN};
+
 // Forward-declare for use in GridQuery.
 template<typename T, typename BackingStore=std::vector<T>>
 class VoxelGridBase;
@@ -460,18 +462,62 @@ class VoxelGridBase;
 // unlike std::optional<T>, since it needs to pass the caller a const/mutable
 // reference to the item in the voxel grid.
 template<typename T>
-class GridQuery : public ReferencingMaybe<T>
+class GridQuery
 {
 private:
   template<typename Item, typename BackingStore> friend class VoxelGridBase;
 
-  // This constructor is private because users should not be able to create
+  T* const item_ptr_ = nullptr;
+  AccessStatus status_ = AccessStatus::UNKNOWN;
+
+  // These constructors are private because users should not be able to create
   // GridQuery<T> with a value on their own, creation should only be possible
   // within a VoxelGridBase<T> to which the GridQuery<T> references.
-  explicit GridQuery(T& item) : ReferencingMaybe<T>(item) {}
+  explicit GridQuery(T& item)
+      : item_ptr_(std::addressof(item)), status_(AccessStatus::SUCCESS) {}
+
+  explicit GridQuery(const AccessStatus status)
+      : item_ptr_(nullptr), status_(status)
+  {
+    if (status_ == AccessStatus::SUCCESS)
+    {
+      throw std::invalid_argument(
+          "GridQuery cannot be constructed with AccessStatus::SUCCESS");
+    }
+  }
 
 public:
-  GridQuery() : ReferencingMaybe<T>() {}
+  GridQuery() : item_ptr_(nullptr), status_(AccessStatus::UNKNOWN) {}
+
+  T& Value() const
+  {
+    if (HasValue())
+    {
+      return *item_ptr_;
+    }
+    else
+    {
+      throw std::runtime_error("GridQuery does not have value");
+    }
+  }
+
+  T& Value()
+  {
+    if (HasValue())
+    {
+      return *item_ptr_;
+    }
+    else
+    {
+      throw std::runtime_error("GridQuery does not have value");
+    }
+  }
+
+  AccessStatus Status() const { return status_; }
+
+  bool HasValue() const { return item_ptr_ != nullptr; }
+
+  explicit operator bool() const { return HasValue(); }
 };
 
 /// This is the base class for all voxel grid classes. It is pure virtual to
@@ -797,7 +843,7 @@ public:
     }
     else
     {
-      return GridQuery<const T>();
+      return GridQuery<const T>(AccessStatus::OUT_OF_BOUNDS);
     }
   }
 
@@ -811,7 +857,7 @@ public:
     }
     else
     {
-      return GridQuery<const T>();
+      return GridQuery<const T>(AccessStatus::OUT_OF_BOUNDS);
     }
   }
 
@@ -838,44 +884,57 @@ public:
 
   GridQuery<T> GetIndexMutable(const GridIndex& index)
   {
-    if (sizes_.IndexInBounds(index) && OnMutableAccess(index))
+    if (sizes_.IndexInBounds(index))
     {
-      return GridQuery<T>(AccessIndex(sizes_.GetDataIndex(index)));
+      if (OnMutableAccess(index))
+      {
+        return GridQuery<T>(AccessIndex(sizes_.GetDataIndex(index)));
+      }
+      else
+      {
+        return GridQuery<T>(AccessStatus::MUTABLE_ACCESS_PROHIBITED);
+      }
     }
     else
     {
-      return GridQuery<T>();
+      return GridQuery<T>(AccessStatus::OUT_OF_BOUNDS);
     }
   }
 
   GridQuery<T> GetIndexMutable(
       const int64_t x_index, const int64_t y_index, const int64_t z_index)
   {
-    if (sizes_.IndexInBounds(x_index, y_index, z_index) &&
-        OnMutableAccess(x_index, y_index, z_index))
+    if (sizes_.IndexInBounds(x_index, y_index, z_index))
     {
-      return GridQuery<T>(
+      if (OnMutableAccess(x_index, y_index, z_index))
+      {
+        return GridQuery<T>(
             AccessIndex(sizes_.GetDataIndex(x_index, y_index, z_index)));
+      }
+      else
+      {
+        return GridQuery<T>(AccessStatus::MUTABLE_ACCESS_PROHIBITED);
+      }
     }
     else
     {
-      return GridQuery<T>();
+      return GridQuery<T>(AccessStatus::OUT_OF_BOUNDS);
     }
   }
 
   // Location-based setters.
 
-  bool SetLocation3d(const Eigen::Vector3d& location, const T& value)
+  AccessStatus SetLocation3d(const Eigen::Vector3d& location, const T& value)
   {
     return SetIndex(LocationToGridIndex3d(location), value);
   }
 
-  bool SetLocation4d(const Eigen::Vector4d& location, const T& value)
+  AccessStatus SetLocation4d(const Eigen::Vector4d& location, const T& value)
   {
     return SetIndex(LocationToGridIndex4d(location), value);
   }
 
-  bool SetLocation(
+  AccessStatus SetLocation(
       const double x, const double y, const double z, const T& value)
   {
     const Eigen::Vector4d location(x, y, z, 1.0);
@@ -884,48 +943,61 @@ public:
 
   // Index-based setters.
 
-  bool SetIndex(const GridIndex& index, const T& value)
+  AccessStatus SetIndex(const GridIndex& index, const T& value)
   {
-    if (sizes_.IndexInBounds(index) && OnMutableAccess(index))
+    if (sizes_.IndexInBounds(index))
     {
-      AccessIndex(sizes_.GetDataIndex(index)) = value;
-      return true;
+      if (OnMutableAccess(index))
+      {
+        AccessIndex(sizes_.GetDataIndex(index)) = value;
+        return AccessStatus::SUCCESS;
+      }
+      else
+      {
+        return AccessStatus::MUTABLE_ACCESS_PROHIBITED;
+      }
     }
     else
     {
-      return false;
+      return AccessStatus::OUT_OF_BOUNDS;
     }
   }
 
-  bool SetIndex(
+  AccessStatus SetIndex(
       const int64_t x_index, const int64_t y_index, const int64_t z_index,
       const T& value)
   {
-    if (sizes_.IndexInBounds(x_index, y_index, z_index) &&
-        OnMutableAccess(x_index, y_index, z_index))
+    if (sizes_.IndexInBounds(x_index, y_index, z_index))
     {
-      AccessIndex(sizes_.GetDataIndex(x_index, y_index, z_index)) = value;
-      return true;
+      if (OnMutableAccess(x_index, y_index, z_index))
+      {
+        AccessIndex(sizes_.GetDataIndex(x_index, y_index, z_index)) = value;
+        return AccessStatus::SUCCESS;
+      }
+      else
+      {
+        return AccessStatus::MUTABLE_ACCESS_PROHIBITED;
+      }
     }
     else
     {
-      return false;
+      return AccessStatus::OUT_OF_BOUNDS;
     }
   }
 
   // Location-based setters (for temporary values).
 
-  bool SetLocation3d(const Eigen::Vector3d& location, T&& value)
+  AccessStatus SetLocation3d(const Eigen::Vector3d& location, T&& value)
   {
     return SetIndex(LocationToGridIndex3d(location), value);
   }
 
-  bool SetLocation4d(const Eigen::Vector4d& location, T&& value)
+  AccessStatus SetLocation4d(const Eigen::Vector4d& location, T&& value)
   {
     return SetIndex(LocationToGridIndex4d(location), value);
   }
 
-  bool SetLocation(
+  AccessStatus SetLocation(
       const double x, const double y, const double z, T&& value)
   {
     const Eigen::Vector4d location(x, y, z, 1.0);
@@ -934,32 +1006,45 @@ public:
 
   // Index-based setters (for temporary values).
 
-  bool SetIndex(const GridIndex& index, T&& value)
+  AccessStatus SetIndex(const GridIndex& index, T&& value)
   {
-    if (sizes_.IndexInBounds(index) && OnMutableAccess(index))
+    if (sizes_.IndexInBounds(index))
     {
-      AccessIndex(sizes_.GetDataIndex(index)) = value;
-      return true;
+      if (OnMutableAccess(index))
+      {
+        AccessIndex(sizes_.GetDataIndex(index)) = value;
+        return AccessStatus::SUCCESS;
+      }
+      else
+      {
+        return AccessStatus::MUTABLE_ACCESS_PROHIBITED;
+      }
     }
     else
     {
-      return false;
+      return AccessStatus::OUT_OF_BOUNDS;
     }
   }
 
-  bool SetIndex(
+  AccessStatus SetIndex(
       const int64_t x_index, const int64_t y_index, const int64_t z_index,
       T&& value)
   {
-    if (sizes_.IndexInBounds(x_index, y_index, z_index) &&
-        OnMutableAccess(x_index, y_index, z_index))
+    if (sizes_.IndexInBounds(x_index, y_index, z_index))
     {
-      AccessIndex(sizes_.GetDataIndex(x_index, y_index, z_index)) = value;
-      return true;
+      if (OnMutableAccess(x_index, y_index, z_index))
+      {
+        AccessIndex(sizes_.GetDataIndex(x_index, y_index, z_index)) = value;
+        return AccessStatus::SUCCESS;
+      }
+      else
+      {
+        return AccessStatus::MUTABLE_ACCESS_PROHIBITED;
+      }
     }
     else
     {
-      return false;
+      return AccessStatus::OUT_OF_BOUNDS;
     }
   }
 
