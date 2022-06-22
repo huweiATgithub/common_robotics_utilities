@@ -142,22 +142,24 @@ public:
   }
 };
 
-template<typename NodeValueType>
+template<typename GraphType>
 inline DijkstrasResult PerformDijkstrasAlgorithm(
-    const simple_graph::Graph<NodeValueType>& graph, const int64_t start_index)
+    const GraphType& graph, const int64_t start_index)
 {
   if (!graph.IndexInRange(start_index))
   {
     throw std::invalid_argument("Start index out of range");
   }
   // Setup
-  std::vector<int64_t> previous_index_map(graph.Size(), -1);
+  std::vector<int64_t> previous_index_map(
+      static_cast<size_t>(graph.Size()), -1);
   std::vector<double> distances(
-      graph.Size(), std::numeric_limits<double>::infinity());
+      static_cast<size_t>(graph.Size()),
+      std::numeric_limits<double>::infinity());
   std::priority_queue<IndexAndDistance,
                       std::vector<IndexAndDistance>,
                       CompareIndexDistancePairFn> queue;
-  std::unordered_set<int64_t> explored(graph.Size());
+  std::unordered_set<int64_t> explored(static_cast<size_t>(graph.Size()));
   previous_index_map.at(static_cast<size_t>(start_index)) = start_index;
   distances.at(static_cast<size_t>(start_index)) = 0.0;
   queue.push(IndexAndDistance(start_index, 0.0));
@@ -175,10 +177,10 @@ inline DijkstrasResult PerformDijkstrasAlgorithm(
       // Note that we've been here
       explored.insert(top_node.Index());
       // Get our neighbors
-      const std::vector<simple_graph::GraphEdge>& neighbor_edges
+      const auto& neighbor_edges
           = graph.GetNodeImmutable(top_node.Index()).GetInEdgesImmutable();
       // Go through our neighbors
-      for (const simple_graph::GraphEdge& neighbor_edge : neighbor_edges)
+      for (const auto& neighbor_edge : neighbor_edges)
       {
         const int64_t neighbor_index = neighbor_edge.GetFromIndex();
         const double neighbor_edge_weight = neighbor_edge.GetWeight();
@@ -224,22 +226,19 @@ using AstarIndexPQueueElement =
 using CompareAstarIndexPQueueElementFn =
     simple_astar_search::CompareAstarPQueueElementFn<int64_t>;
 
-template<typename NodeValueType>
+template<typename GraphType>
 inline AstarIndexResult PerformLazyAstarSearch(
-    const simple_graph::Graph<NodeValueType>& graph,
+    const GraphType& graph,
     const IndexStatesWithCosts& start_indices,
     const std::function<bool(
-        const simple_graph::Graph<NodeValueType>&,
-        const int64_t)>& goal_check_fn,
+        const GraphType&, const int64_t)>& goal_check_fn,
     const std::function<bool(
-        const simple_graph::Graph<NodeValueType>&,
-        const simple_graph::GraphEdge&)>& edge_validity_check_fn,
+        const GraphType&,
+        const typename GraphType::EdgeType&)>& edge_validity_check_fn,
     const std::function<double(
-        const simple_graph::Graph<NodeValueType>&,
-        const simple_graph::GraphEdge&)>& distance_fn,
+        const GraphType&, const typename GraphType::EdgeType&)>& distance_fn,
     const std::function<double(
-        const simple_graph::Graph<NodeValueType>&,
-        const int64_t)>& heuristic_fn,
+        const GraphType&, const int64_t)>& heuristic_fn,
     const bool limit_pqueue_duplicates)
 {
   // Sanity check
@@ -344,7 +343,7 @@ inline AstarIndexResult PerformLazyAstarSearch(
       }
 
       // Explore and add the children
-      const std::vector<simple_graph::GraphEdge>& out_edges
+      const auto& out_edges
           = graph.GetNodeImmutable(top_node.State()).GetOutEdgesImmutable();
 
       for (const auto& current_out_edge : out_edges)
@@ -422,19 +421,19 @@ inline AstarIndexResult PerformLazyAstarSearch(
   }
 }
 
-template<typename NodeValueType>
+template<typename GraphType>
 inline AstarIndexResult PerformLazyAstarSearch(
-    const simple_graph::Graph<NodeValueType>& graph,
+    const GraphType& graph,
     const std::vector<int64_t>& start_indices,
     const std::vector<int64_t>& goal_indices,
     const std::function<bool(
-        const simple_graph::Graph<NodeValueType>&,
-        const simple_graph::GraphEdge&)>& edge_validity_check_fn,
+        const GraphType&,
+        const typename GraphType::EdgeType&)>& edge_validity_check_fn,
     const std::function<double(
-        const simple_graph::Graph<NodeValueType>&,
-        const simple_graph::GraphEdge&)>& distance_fn,
-    const std::function<double(const simple_graph::Graph<NodeValueType>&,
-                               const int64_t, const int64_t)>& heuristic_fn,
+        const GraphType&,
+        const typename GraphType::EdgeType&)>& distance_fn,
+    const std::function<double(
+        const GraphType&, const int64_t, const int64_t)>& heuristic_fn,
     const bool limit_pqueue_duplicates)
 {
   // Enforced sanity checks
@@ -456,8 +455,7 @@ inline AstarIndexResult PerformLazyAstarSearch(
 
   // Make goal check function
   const auto goal_check_function = [&] (
-      const simple_graph::Graph<NodeValueType>& search_graph,
-      const int64_t node_index)
+      const GraphType& search_graph, const int64_t node_index)
   {
     CRU_UNUSED(search_graph);
     for (const int64_t goal_index : goal_indices)
@@ -472,8 +470,7 @@ inline AstarIndexResult PerformLazyAstarSearch(
 
   // Make heuristic helper function
   const auto heuristic_function = [&] (
-      const simple_graph::Graph<NodeValueType>& search_graph,
-      const int64_t node_index)
+      const GraphType& search_graph, const int64_t node_index)
   {
     double best_heuristic_value = std::numeric_limits<double>::infinity();
     for (const int64_t goal_index : goal_indices)
@@ -495,15 +492,15 @@ inline AstarIndexResult PerformLazyAstarSearch(
     start_indices_with_costs.emplace_back(start_index, 0.0);
   }
 
-  return PerformLazyAstarSearch<NodeValueType>(
+  return PerformLazyAstarSearch<GraphType>(
       graph, start_indices_with_costs, goal_check_function,
       edge_validity_check_fn, distance_fn, heuristic_function,
       limit_pqueue_duplicates);
 }
 
-template<typename NodeValueType>
+template<typename NodeValueType, typename GraphType>
 inline AstarIndexResult PerformLazyAstarSearch(
-    const simple_graph::Graph<NodeValueType>& graph,
+    const GraphType& graph,
     const std::vector<int64_t>& start_indices,
     const std::vector<int64_t>& goal_indices,
     const std::function<bool(const NodeValueType&,
@@ -516,8 +513,8 @@ inline AstarIndexResult PerformLazyAstarSearch(
 {
   // Wrap the helper functions
   const auto edge_validity_check_function
-      = [&] (const simple_graph::Graph<NodeValueType>& search_graph,
-             const simple_graph::GraphEdge& edge)
+      = [&] (const GraphType& search_graph,
+             const typename GraphType::EdgeType& edge)
   {
     return edge_validity_check_fn(
         search_graph.GetNodeImmutable(edge.GetFromIndex()).GetValueImmutable(),
@@ -525,8 +522,8 @@ inline AstarIndexResult PerformLazyAstarSearch(
   };
 
   const auto distance_function
-      = [&] (const simple_graph::Graph<NodeValueType>& search_graph,
-             const simple_graph::GraphEdge& edge)
+      = [&] (const GraphType& search_graph,
+             const typename GraphType::EdgeType& edge)
   {
     return distance_fn(
         search_graph.GetNodeImmutable(edge.GetFromIndex()).GetValueImmutable(),
@@ -534,7 +531,7 @@ inline AstarIndexResult PerformLazyAstarSearch(
   };
 
   const auto heuristic_function
-      = [&] (const simple_graph::Graph<NodeValueType>& search_graph,
+      = [&] (const GraphType& search_graph,
              const int64_t from_index, const int64_t to_index)
   {
     return heuristic_fn(
@@ -542,14 +539,14 @@ inline AstarIndexResult PerformLazyAstarSearch(
         search_graph.GetNodeImmutable(to_index).GetValueImmutable());
   };
 
-  return PerformLazyAstarSearch<NodeValueType>(
+  return PerformLazyAstarSearch<GraphType>(
       graph, start_indices, goal_indices, edge_validity_check_function,
       distance_function, heuristic_function, limit_pqueue_duplicates);
 }
 
-template<typename NodeValueType>
+template<typename NodeValueType, typename GraphType>
 inline AstarIndexResult PerformAstarSearch(
-    const simple_graph::Graph<NodeValueType>& graph,
+    const GraphType& graph,
     const std::vector<int64_t>& start_indices,
     const std::vector<int64_t>& goal_indices,
     const std::function<double(const NodeValueType&,
@@ -557,8 +554,8 @@ inline AstarIndexResult PerformAstarSearch(
     const bool limit_pqueue_duplicates)
 {
   const auto edge_validity_check_function
-      = [&] (const simple_graph::Graph<NodeValueType>& search_graph,
-             const simple_graph::GraphEdge& edge)
+      = [&] (const GraphType& search_graph,
+             const typename GraphType::EdgeType& edge)
   {
     CRU_UNUSED(search_graph);
     if (edge.GetWeight() < std::numeric_limits<double>::infinity())
@@ -571,21 +568,21 @@ inline AstarIndexResult PerformAstarSearch(
     }
   };
   const auto distance_function
-      = [&] (const simple_graph::Graph<NodeValueType>& search_graph,
-             const simple_graph::GraphEdge& edge)
+      = [&] (const GraphType& search_graph,
+             const typename GraphType::EdgeType& edge)
   {
     CRU_UNUSED(search_graph);
     return edge.GetWeight();
   };
   const auto heuristic_function
-      = [&] (const simple_graph::Graph<NodeValueType>& search_graph,
+      = [&] (const GraphType& search_graph,
              const int64_t from_index, const int64_t to_index)
   {
     return heuristic_fn(
         search_graph.GetNodeImmutable(from_index).GetValueImmutable(),
         search_graph.GetNodeImmutable(to_index).GetValueImmutable());
   };
-  return PerformLazyAstarSearch<NodeValueType>(
+  return PerformLazyAstarSearch<GraphType>(
       graph, start_indices, goal_indices, edge_validity_check_function,
       distance_function, heuristic_function, limit_pqueue_duplicates);
 }
