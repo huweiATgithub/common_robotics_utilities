@@ -1,19 +1,16 @@
 #pragma once
 
-#if defined(_OPENMP)
-#include <omp.h>
-#endif
-
 #include <cmath>
 #include <cstdint>
 #include <functional>
-#include <iostream>
 #include <limits>
 #include <random>
 #include <stdexcept>
+#include <string>
 #include <unordered_map>
 #include <vector>
 
+#include <common_robotics_utilities/openmp_helpers.hpp>
 #include <common_robotics_utilities/simple_knearest_neighbors.hpp>
 #include <common_robotics_utilities/utility.hpp>
 
@@ -35,11 +32,7 @@ inline std::vector<int32_t> PerformSingleClusteringIteration(
 {
   std::vector<int32_t> new_cluster_labels(data.size());
 
-#if defined(_OPENMP)
-#pragma omp parallel for if (use_parallel)
-#else
-  CRU_UNUSED(use_parallel);
-#endif
+  CRU_OMP_PARALLEL_FOR_IF(use_parallel)
   for (size_t idx = 0; idx < data.size(); idx++)
   {
     const DataType& datapoint = data.at(idx);
@@ -88,11 +81,7 @@ inline Container ComputeClusterCentersWeighted(
     // Compute the center of each cluster
     Container cluster_centers(static_cast<size_t>(num_clusters));
 
-#if defined(_OPENMP)
-#pragma omp parallel for if (use_parallel)
-#else
-    CRU_UNUSED(use_parallel);
-#endif
+    CRU_OMP_PARALLEL_FOR_IF(use_parallel)
     for (size_t cluster = 0; cluster < clustered_data.size(); cluster++)
     {
       const Container& cluster_data = clustered_data.at(cluster);
@@ -149,7 +138,8 @@ inline std::vector<int32_t> ClusterWeighted(
     const std::function<DataType(const Container&, const std::vector<double>&)>&
         weighted_average_fn,
     const int32_t num_clusters, const int64_t prng_seed,
-    const bool do_preliminary_clustering, const bool use_parallel = false)
+    const bool do_preliminary_clustering, const bool use_parallel = false,
+    const utility::LoggingFunction& logging_fn = {})
 {
   if (data.empty())
   {
@@ -157,8 +147,10 @@ inline std::vector<int32_t> ClusterWeighted(
   }
   if (num_clusters == 1)
   {
-    std::cerr << "[K-means clustering] Provided num_clusters = 1,"
-                 << " returning default labels of cluster == 0" << std::endl;
+    if (logging_fn)
+    {
+      logging_fn("[K-means clustering] Provided num_clusters = 1");
+    }
     return std::vector<int32_t>(data.size(), 0u);
   }
   else if (num_clusters == 0)
@@ -175,16 +167,23 @@ inline std::vector<int32_t> ClusterWeighted(
     if (subset_size >= (num_clusters * 5))
     {
       enable_preliminary_clustering = true;
-      std::cout << "[K-means clustering] Preliminary clustering enabled,"
-                << " using subset of " << subset_size << " datapoints from "
-                << data.size() << " total" << std::endl;
+      if (logging_fn)
+      {
+        logging_fn(
+            "[K-means clustering] Preliminary clustering enabled, using subset "
+            "of " + std::to_string(subset_size) + " datapoints from " +
+            std::to_string(data.size()) + " total");
+      }
     }
     else
     {
       enable_preliminary_clustering = false;
-      std::cerr << "[K-means clustering] Preliminary clustering disabled as"
-                << " input data is too small w.r.t. number of clusters"
-                << std::endl;
+      if (logging_fn)
+      {
+        logging_fn(
+            "[K-means clustering] Preliminary clustering disabled as input data"
+            " is too small w.r.t. number of clusters");
+      }
     }
   }
   // Prepare an RNG for cluster initialization
@@ -282,8 +281,12 @@ inline std::vector<int32_t> ClusterWeighted(
     converged = CheckForConvergence(cluster_labels, new_cluster_labels);
     cluster_labels = new_cluster_labels;
   }
-  std::cout << "[K-means clustering] Clustering converged after "
-            << iteration << " iterations" << std::endl;
+  if (logging_fn)
+  {
+    logging_fn(
+        "[K-means clustering] Clustering converged after " +
+        std::to_string(iteration) + " iterations");
+  }
   return cluster_labels;
 }
 
@@ -301,7 +304,8 @@ inline std::vector<int32_t> Cluster(
     const std::function<double(const DataType&, const DataType&)>& distance_fn,
     const std::function<DataType(const Container&)>& average_fn,
     const int32_t num_clusters, const int64_t prng_seed,
-    const bool do_preliminary_clustering, const bool use_parallel = false)
+    const bool do_preliminary_clustering, const bool use_parallel = false,
+    const utility::LoggingFunction& logging_fn = {})
 {
   // Make a dummy set of uniform weights
   const std::vector<double> data_weights(data.size(), 1.0);
@@ -315,7 +319,7 @@ inline std::vector<int32_t> Cluster(
   };
   return ClusterWeighted<DataType, Container>(
       data, data_weights, distance_fn, weighted_average_fn, num_clusters,
-      prng_seed, do_preliminary_clustering, use_parallel);
+      prng_seed, do_preliminary_clustering, use_parallel, logging_fn);
 }
 }  // namespace simple_kmeans_clustering
 }  // namespace common_robotics_utilities
