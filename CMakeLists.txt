@@ -1,33 +1,15 @@
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.15)
 project(common_robotics_utilities)
-
-find_package(ament_cmake_ros REQUIRED)
-
-find_package(rclcpp REQUIRED)
-find_package(geometry_msgs REQUIRED)
-find_package(visualization_msgs REQUIRED)
 
 find_package(Eigen3 REQUIRED)
 set(Eigen3_INCLUDE_DIRS ${EIGEN3_INCLUDE_DIR})
 find_package(OpenMP)
-find_package(ZLIB REQUIRED)
 
-## We don't depend on Drake, but we do use different build flags if present.
-find_package(drake QUIET)
+include_directories(include SYSTEM ${Eigen3_INCLUDE_DIRS})
 
-###########
-## Build ##
-###########
-
-## Specify additional locations of header files
-## Your package locations should be listed before other locations
-include_directories(include SYSTEM ${Eigen3_INCLUDE_DIRS} ${ZLIB_INCLUDE_DIRS})
-
-## Build options
 set(CMAKE_INTERPROCEDURAL_OPTIMIZATION ON)
-cmake_policy(SET CMP0069 NEW)
+set(CMAKE_CXX_STANDARD 17)
 
-add_compile_options(-std=c++17)
 add_compile_options(-Wall)
 add_compile_options(-Wextra)
 add_compile_options(-Werror)
@@ -39,15 +21,6 @@ add_compile_options(-Werror=non-virtual-dtor)
 add_compile_options(-Wold-style-cast)
 add_compile_options(-Wpessimizing-move)
 add_compile_options(-Wuninitialized)
-
-if(drake_FOUND)
-    message(STATUS "Drake found, disabling -march=native")
-else()
-    message(STATUS "Drake NOT found, enabling -march=native")
-    add_compile_options(-march=native)
-endif()
-
-add_definitions(-DCOMMON_ROBOTICS_UTILITIES__SUPPORTED_ROS_VERSION=2)
 
 ## It's not clear if add_compile_options does the right things for flags that
 ## may differ between languages and target type.
@@ -71,8 +44,6 @@ add_library(${PROJECT_NAME}
             include/${PROJECT_NAME}/path_processing.hpp
             include/${PROJECT_NAME}/print.hpp
             include/${PROJECT_NAME}/random_rotation_generator.hpp
-            include/${PROJECT_NAME}/ros_conversions.hpp
-            include/${PROJECT_NAME}/ros_helpers.hpp
             include/${PROJECT_NAME}/serialization.hpp
             include/${PROJECT_NAME}/simple_astar_search.hpp
             include/${PROJECT_NAME}/simple_dtw.hpp
@@ -94,69 +65,50 @@ add_library(${PROJECT_NAME}
             src/${PROJECT_NAME}/base64_helpers.cpp
             src/${PROJECT_NAME}/conversions.cpp
             src/${PROJECT_NAME}/math.cpp
-            src/${PROJECT_NAME}/ros_conversions.cpp
             src/${PROJECT_NAME}/serialization.cpp
             src/${PROJECT_NAME}/time_optimal_trajectory_parametrization.cpp
             src/${PROJECT_NAME}/zlib_helpers.cpp)
-ament_target_dependencies(${PROJECT_NAME} rclcpp geometry_msgs visualization_msgs)
-target_link_libraries(${PROJECT_NAME} ${ZLIB_LIBRARIES})
+target_link_libraries(${PROJECT_NAME} z)
 
 # Examples
 add_executable(clustering_example example/clustering_example.cpp)
+add_dependencies(clustering_example ${PROJECT_NAME})
 target_link_libraries(clustering_example ${PROJECT_NAME})
 
 add_executable(dtw_example example/dtw_example.cpp)
+add_dependencies(dtw_example ${PROJECT_NAME})
 target_link_libraries(dtw_example ${PROJECT_NAME})
 
-if(BUILD_TESTING)
-    # Tests
-    find_package(ament_cmake_gtest REQUIRED)
 
-    ament_add_gtest(maybe_test test/maybe_test.cpp)
-    target_link_libraries(maybe_test ${PROJECT_NAME})
-
-    ament_add_gtest(planning_test test/planning_test.cpp)
-    target_link_libraries(planning_test ${PROJECT_NAME})
-
-    ament_add_gtest(task_planning_test test/task_planning_test.cpp)
-    target_link_libraries(task_planning_test ${PROJECT_NAME})
-
-    ament_add_gtest(ros_helpers_test test/ros_helpers_test.cpp)
-    add_dependencies(ros_helpers_test ${PROJECT_NAME})
-    target_link_libraries(ros_helpers_test ${PROJECT_NAME})
-
-    ament_add_gtest(utility_test test/utility_test.cpp)
-    add_dependencies(utility_test ${PROJECT_NAME})
-    target_link_libraries(utility_test ${PROJECT_NAME})
-
-    ament_add_gtest(voxel_grid_test test/voxel_grid_test.cpp)
-    target_link_libraries(voxel_grid_test ${PROJECT_NAME})
-
-    ament_add_gtest(print_test test/print_test.cpp)
-    target_link_libraries(print_test ${PROJECT_NAME})
-endif()
-
-#############
-## Install ##
-#############
-
-install(TARGETS ${PROJECT_NAME}
-    ARCHIVE DESTINATION lib
-    LIBRARY DESTINATION lib
-    RUNTIME DESTINATION bin
+# Tests
+include(FetchContent)
+FetchContent_Declare(
+  googletest
+  GIT_REPOSITORY https://github.com/google/googletest.git
+  GIT_TAG b5fd99bbd55ebe1a3488b8ea3717fba089293457
 )
+set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(googletest)
 
-install(
-    DIRECTORY include/
-    DESTINATION include
-)
+enable_testing()
+include(GoogleTest)
 
-ament_export_definitions(-DCOMMON_ROBOTICS_UTILITIES__SUPPORTED_ROS_VERSION=2)
-ament_export_include_directories(include)
-ament_export_libraries(${PROJECT_NAME})
+add_executable(maybe_test test/maybe_test.cpp)
+target_link_libraries(maybe_test ${PROJECT_NAME} GTest::gtest)
+gtest_discover_tests(maybe_test)
 
-ament_export_dependencies(rclcpp)
-ament_export_dependencies(geometry_msgs)
-ament_export_dependencies(visualization_msgs)
+add_executable(planning_test test/planning_test.cpp)
+target_link_libraries(planning_test ${PROJECT_NAME} GTest::gtest)
+gtest_discover_tests(planning_test)
 
-ament_package(CONFIG_EXTRAS cmake/common_robotics_utilities-dependencies.cmake)
+add_executable(task_planning_test test/task_planning_test.cpp)
+target_link_libraries(task_planning_test ${PROJECT_NAME} GTest::gtest)
+gtest_discover_tests(task_planning_test)
+
+add_executable(utility_test test/utility_test.cpp)
+target_link_libraries(utility_test ${PROJECT_NAME} GTest::gtest)
+gtest_discover_tests(utility_test)
+
+add_executable(voxel_grid_test test/voxel_grid_test.cpp)
+target_link_libraries(voxel_grid_test ${PROJECT_NAME} GTest::gtest)
+gtest_discover_tests(voxel_grid_test)
