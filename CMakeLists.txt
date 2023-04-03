@@ -71,48 +71,49 @@ add_library(${PROJECT_NAME}
 target_link_libraries(${PROJECT_NAME} z)
 
 # Examples
-add_executable(clustering_example example/clustering_example.cpp)
-add_dependencies(clustering_example ${PROJECT_NAME})
-target_link_libraries(clustering_example ${PROJECT_NAME})
+if (NOT SKBUILD)
+    add_executable(clustering_example example/clustering_example.cpp)
+    add_dependencies(clustering_example ${PROJECT_NAME})
+    target_link_libraries(clustering_example ${PROJECT_NAME})
 
-add_executable(dtw_example example/dtw_example.cpp)
-add_dependencies(dtw_example ${PROJECT_NAME})
-target_link_libraries(dtw_example ${PROJECT_NAME})
-
+    add_executable(dtw_example example/dtw_example.cpp)
+    add_dependencies(dtw_example ${PROJECT_NAME})
+    target_link_libraries(dtw_example ${PROJECT_NAME})
 
 # Tests
-include(FetchContent)
-FetchContent_Declare(
-  googletest
-  GIT_REPOSITORY https://github.com/google/googletest.git
-  GIT_TAG b5fd99bbd55ebe1a3488b8ea3717fba089293457
-)
-set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
-set(INSTALL_GTEST OFF)  # don't install tests
-FetchContent_MakeAvailable(googletest)
+    include(FetchContent)
+    FetchContent_Declare(
+      googletest
+      GIT_REPOSITORY https://github.com/google/googletest.git
+      GIT_TAG b5fd99bbd55ebe1a3488b8ea3717fba089293457
+    )
+    set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+    set(INSTALL_GTEST OFF)  # don't install tests
+    FetchContent_MakeAvailable(googletest)
 
-enable_testing()
-include(GoogleTest)
+    enable_testing()
+    include(GoogleTest)
 
-add_executable(maybe_test test/maybe_test.cpp)
-target_link_libraries(maybe_test ${PROJECT_NAME} GTest::gtest)
-gtest_discover_tests(maybe_test)
+    add_executable(maybe_test test/maybe_test.cpp)
+    target_link_libraries(maybe_test ${PROJECT_NAME} GTest::gtest)
+    gtest_discover_tests(maybe_test)
 
-add_executable(planning_test test/planning_test.cpp)
-target_link_libraries(planning_test ${PROJECT_NAME} GTest::gtest)
-gtest_discover_tests(planning_test)
+    add_executable(planning_test test/planning_test.cpp)
+    target_link_libraries(planning_test ${PROJECT_NAME} GTest::gtest)
+    gtest_discover_tests(planning_test)
 
-add_executable(task_planning_test test/task_planning_test.cpp)
-target_link_libraries(task_planning_test ${PROJECT_NAME} GTest::gtest)
-gtest_discover_tests(task_planning_test)
+    add_executable(task_planning_test test/task_planning_test.cpp)
+    target_link_libraries(task_planning_test ${PROJECT_NAME} GTest::gtest)
+    gtest_discover_tests(task_planning_test)
 
-add_executable(utility_test test/utility_test.cpp)
-target_link_libraries(utility_test ${PROJECT_NAME} GTest::gtest)
-gtest_discover_tests(utility_test)
+    add_executable(utility_test test/utility_test.cpp)
+    target_link_libraries(utility_test ${PROJECT_NAME} GTest::gtest)
+    gtest_discover_tests(utility_test)
 
-add_executable(voxel_grid_test test/voxel_grid_test.cpp)
-target_link_libraries(voxel_grid_test ${PROJECT_NAME} GTest::gtest)
-gtest_discover_tests(voxel_grid_test)
+    add_executable(voxel_grid_test test/voxel_grid_test.cpp)
+    target_link_libraries(voxel_grid_test ${PROJECT_NAME} GTest::gtest)
+    gtest_discover_tests(voxel_grid_test)
+endif ()
 
 
 # Bindings

@@ -1,0 +1,41 @@
+name: Build and test
+on:
+  push:
+    paths:
+      - bindings/**
+      - include/**
+      - src/**
+      - test/**
+      - .github/workflows/build-and-test.yml
+      - CMakeLists.txt
+      - setup.py
+
+jobs:
+  build_and_test:
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4.3.0
+        with:
+          python-version: 3.8
+      - uses: jwlawson/actions-setup-cmake@v1.13
+        with:
+          cmake-version: '3.22.x'
+      - uses: seanmiddleditch/gha-setup-ninja@master
+      - name: Setup environments
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install setuptools setuptools_scm scikit-build numpy
+          sudo apt-get update && sudo apt-get install -qqy libeigen3-dev
+      - name: test c++ library
+        run: |
+          mkdir build
+          cd build
+          cmake .. && cmake --build .
+          ctest
+          cd ..
+      - name: test python bindings
+        run: |
+          python -m pip install pytest
+          python -m pip install .
+          pytest bindings/test

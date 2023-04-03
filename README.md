@@ -7,6 +7,14 @@ Binding codes copied from [mpetersen94/drake:gcs2](https://github.com/mpetersen9
 - write tests in a more pythonic way
 - more tests
 
+### Installation
+Requirements: 
+- cmake, Eigen3
+- (Pip) scikit-build, setuptools_scm, numpy
+```shell
+pip install .
+```
+
 ## Building
 
 ```shell
