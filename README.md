@@ -1,35 +1,30 @@
 # common_robotics_utilities
 Common utility functions and algorithms for robotics work used by ARC &amp; ARM labs and TRI.
 
-## Setup
-
-`common_robotics_utilities` is a ROS package.
-
-Thus, it is best to build it within a ROS workspace:
-
-```sh
-mkdir -p ~/ws/src
-cd ~/ws/src
-git clone https://github.com/calderpg/common_robotics_utilities.git
-```
+## Bindings
+Binding codes copied from [mpetersen94/drake:gcs2](https://github.com/mpetersen94/drake/tree/gcs2) with:
+- adaption to latest commit of the cpp library
+- write tests in a more pythonic way
+- more tests
 
 ## Building
 
-Use [`catkin_make`](http://wiki.ros.org/catkin/commands/catkin_make) or
-[`colcon`](https://colcon.readthedocs.io/en/released/) accordingly.
-
-*For ROS 1 Kinetic+*
-```sh
-cd ~/ws
-catkin_make  # the entire workspace
-catkin_make --pkg common_robotics_utilities  # the package only
+```shell
+mkdir build && cd build
+cmake .. 
+cmake --build .
+cmake --install .
 ```
 
-*For ROS 2 Galactic+*
-```sh
-cd ~/ws
-colcon build  # the entire workspace
-colcon build --packages-select common_robotics_utilities  # the package only
-```
 
 ## Testing
+
+```shell
+mkdir build && cd build
+cmake .. 
+ctest
+```
+
+```shell
+pytest bindings/test
+```

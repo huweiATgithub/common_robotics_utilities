@@ -88,6 +88,7 @@ FetchContent_Declare(
   GIT_TAG b5fd99bbd55ebe1a3488b8ea3717fba089293457
 )
 set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+set(INSTALL_GTEST OFF)  # don't install tests
 FetchContent_MakeAvailable(googletest)
 
 enable_testing()
@@ -112,3 +113,7 @@ gtest_discover_tests(utility_test)
 add_executable(voxel_grid_test test/voxel_grid_test.cpp)
 target_link_libraries(voxel_grid_test ${PROJECT_NAME} GTest::gtest)
 gtest_discover_tests(voxel_grid_test)
+
+
+# Bindings
+add_subdirectory(bindings)
