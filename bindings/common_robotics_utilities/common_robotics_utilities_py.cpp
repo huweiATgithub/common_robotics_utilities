@@ -9,6 +9,7 @@
 #include <common_robotics_utilities/simple_graph.hpp>
 #include <common_robotics_utilities/simple_prm_planner.hpp>
 #include <common_robotics_utilities/simple_rrt_planner.hpp>
+#include <common_robotics_utilities/helper_functions_mainly_for_python.hpp>
 
 
 PYBIND11_MODULE(common_robotics_utilities, m) {
@@ -94,13 +95,17 @@ PYBIND11_MODULE(common_robotics_utilities, m) {
                 .def("Statistics", &Class::Statistics, "");
     }
 
+    m.def("EuclideanDistanceFunction", EuclideanDistanceFunction);
+
+    std::function<double(const T &, const T &)> default_distance_fn = EuclideanDistanceFunction;
     m.def("MakeKinematicLinearRRTNearestNeighborsFunction",
           &MakeKinematicLinearRRTNearestNeighborsFunction<T>,
-          py::arg("distance_fn"), py::arg("use_parallel") = true, "");
+          py::arg("distance_fn") = default_distance_fn, py::arg("use_parallel") = true, "");
 
+    // This function
     m.def("MakeKinematicLinearBiRRTNearestNeighborsFunction",
           &MakeKinematicLinearBiRRTNearestNeighborsFunction<T>,
-          py::arg("distance_fn"), py::arg("use_parallel") = true, "");
+          py::arg("distance_fn") = default_distance_fn, py::arg("use_parallel") = true, "");
 
     m.def("MakeKinematicBiRRTExtendPropagationFunction",
           &MakeKinematicBiRRTExtendPropagationFunction<T>, py::arg("distance_fn"),
@@ -172,7 +177,8 @@ PYBIND11_MODULE(common_robotics_utilities, m) {
           py::arg("max_shortcut_fraction"), py::arg("resample_shortcuts_interval"),
           py::arg("check_for_marginal_shortcuts"),
           py::arg("edge_validity_check_fn"), py::arg("state_distance_fn"),
-          py::arg("state_interpolation_fn"), py::arg("uniform_unit_real_fn"), "");
+          py::arg("state_interpolation_fn"), py::arg("uniform_unit_real_fn"),
+          "");
 
     // Simple Astar Search
     {
