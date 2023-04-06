@@ -29,15 +29,6 @@ def test_kinematic_linear_birrt_nearest_neighbors_function():
 
     # Use distance fn defined in Python with parallel (OMP_FOR) will hang the program
     nearest_neighbor_parallel_fn = MakeKinematicLinearBiRRTNearestNeighborsFunction(
-        use_parallel=True,
-    )
-    nearest_index = nearest_neighbor_parallel_fn(
-        start_tree, query, BiRRTActiveTreeType.START_TREE
-    )
-    assert nearest_index == 0
-
-    # Above is equivalent to
-    nearest_neighbor_parallel_fn = MakeKinematicLinearBiRRTNearestNeighborsFunction(
         EuclideanDistanceFunction,
         use_parallel=True,
     )
