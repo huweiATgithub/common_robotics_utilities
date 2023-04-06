@@ -10,7 +10,7 @@ Binding codes copied from [mpetersen94/drake:gcs2](https://github.com/mpetersen9
 ### Installation
 Requirements: 
 - cmake, Eigen3
-- (Pip) scikit-build, setuptools_scm, numpy
+- (Pip) scikit-build, calver, numpy
 ```shell
 pip install .
 ```
