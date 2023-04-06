@@ -62,7 +62,6 @@ add_library(${PROJECT_NAME}
             include/${PROJECT_NAME}/utility.hpp
             include/${PROJECT_NAME}/voxel_grid.hpp
             include/${PROJECT_NAME}/zlib_helpers.hpp
-            include/${PROJECT_NAME}/helper_functions_mainly_for_python.hpp
             src/${PROJECT_NAME}/base64_helpers.cpp
             src/${PROJECT_NAME}/conversions.cpp
             src/${PROJECT_NAME}/math.cpp
@@ -114,10 +113,6 @@ if (NOT SKBUILD)
     add_executable(voxel_grid_test test/voxel_grid_test.cpp)
     target_link_libraries(voxel_grid_test ${PROJECT_NAME} GTest::gtest)
     gtest_discover_tests(voxel_grid_test)
-
-    add_executable(make_function_test test/make_function_test.cpp)
-    target_link_libraries(make_function_test ${PROJECT_NAME} GTest::gtest)
-    gtest_discover_tests(make_function_test)
 endif ()
 
 

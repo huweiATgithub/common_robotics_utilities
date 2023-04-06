@@ -7,9 +7,11 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(pybind11)
 
 set(PY_BINDING_NAME "${PROJECT_NAME}_py")
+include_directories(common_robotics_utilities)
 pybind11_add_module(
     ${PY_BINDING_NAME}
     common_robotics_utilities/common_robotics_utilities_py.cpp
+    common_robotics_utilities/common_robotics_utilities_original_py.cpp
 )
 # Change the name of output library to match the one defined in `..._py.cpp` and the one used in `__init__.py`
 # https://github.com/pybind/pybind11/issues/415
