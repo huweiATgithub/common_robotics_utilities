@@ -1,2 +1,7 @@
-CMakeLists.txt
-package.xml
+*build*/
+venv/
+*cache*/
+dist/
+**/*.egg-info/
+*sciagraph*/
+.idea/
