@@ -11,9 +11,14 @@ Binding codes copied from [mpetersen94/drake:gcs2](https://github.com/mpetersen9
 Requirements: 
 - cmake, Eigen3
 - (Pip) scikit-build, calver, numpy
+Note that only `Eigen3` is required for building the C++ library, while `scikit-build` is required, other dependencies are automatically resolved by python's build system.
+
 ```shell
 pip install .
 ```
+
+
+
 
 ### Usage
 The C++ library supports parallelism using OpenMP in finding nearest k neighborhoods, connecting roadmaps, etc.

@@ -10,6 +10,10 @@ setup(
     package_dir={"": "bindings"},
     packages=find_packages(where="bindings"),
     cmake_install_dir="bindings",
+    # specify dependencies in pyproject.toml is not supported yet.
+    # [project] section requires name and version,
+    # but specifying version using calver is not supported in pyproject.toml.
+    install_requires=["numpy"],
     long_description=long_description,
     long_description_content_type="text/markdown",
 )
