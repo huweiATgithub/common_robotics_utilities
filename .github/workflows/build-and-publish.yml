@@ -1,0 +1,31 @@
+name: Build and publish
+on:
+  push:
+    paths:
+      - bindings/**
+      - include/**
+      - src/**
+      - test/**
+      - .github/workflows/build-and-publish.yml
+      - CMakeLists.txt
+      - setup.py
+
+jobs:
+  build_and_publish:
+    runs-on: ubuntu-20.04
+    permissions:
+      id-token: write
+    environment:
+      name: pypi
+      url: https://pypi.org/p/common-robotics-utilities
+    steps:
+      - uses: actions/checkout@v3
+      - uses: RalfG/python-wheels-manylinux-build@v0.7.1-manylinux2014_x86_64
+        with:
+          system-packages: 'eigen3-devel'
+          package-path: "."
+#       without sudo, fails with permission denied.
+      - run: mkdir dist-manylinux && sudo mv dist/*-manylinux*.whl dist-manylinux
+      - uses: pypa/gh-action-pypi-publish@release/v1.8
+        with:
+          packages-dir: ./dist-manylinux
